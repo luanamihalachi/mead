@@ -1,0 +1,15 @@
+{
+  "name": "mead",
+  "private": true,
+  "workspaces": [
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n cond,geo -c auto \"npm run dev -w services/condition-service\" \"npm run dev -w services/geo-service\"",
+    "start": "concurrently -n cond,geo -c auto \"npm start -w services/condition-service\" \"npm start -w services/geo-service\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
