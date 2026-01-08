@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const { ApiError } = require("@mead/shared");
+const conditionsRouter = require("./routes/conditions");
 
 function createApp() {
   const app = express();
@@ -13,6 +14,8 @@ function createApp() {
   app.get("/health", (_req, res) => {
     res.json({ ok: true, service: "condition-service" });
   });
+
+  app.use("/conditions", conditionsRouter);
 
   app.use((err, _req, res, _next) => {
     if (err instanceof ApiError) {
