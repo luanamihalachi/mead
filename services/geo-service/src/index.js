@@ -1,8 +1,23 @@
+const express = require("express");
+const cors = require("cors");
 require("dotenv").config();
-const { createApp } = require("./app");
 
-const port = Number(process.env.PORT || 3002);
+const geoRoutes = require("./routes/geo");
 
-createApp().listen(port, () => {
-  console.log(`geo-service listening on http://localhost:${port}`);
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.use("/", geoRoutes);
+
+app.use((err, req, res, next) => {
+  const status = err.status || 500;
+  res.status(status).json({
+    error: err.message || "Server error",
+  });
+});
+
+const PORT = process.env.PORT || 4002;
+app.listen(PORT, () => {
+  console.log(`[geo-service] listening on :${PORT}`);
 });
