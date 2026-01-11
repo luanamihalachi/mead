@@ -24,7 +24,7 @@ function addBandRule({ id, field, bands }) {
 const RULES = {
   asthma: [
     addBandRule({
-      id: "asthma_density_band",
+      id: "asthma_density",
       field: "populationDensity",
       bands: [
         {
@@ -44,9 +44,8 @@ const RULES = {
         },
       ],
     }),
-
     addBandRule({
-      id: "asthma_gdp_band",
+      id: "asthma_gdp",
       field: "gdpNominal",
       bands: [
         {
@@ -66,9 +65,8 @@ const RULES = {
         },
       ],
     }),
-
     addBandRule({
-      id: "asthma_lifeexp_band",
+      id: "asthma_lifeexp",
       field: "lifeExpectancy",
       bands: [
         {
@@ -92,7 +90,7 @@ const RULES = {
 
   obesity: [
     addBandRule({
-      id: "obesity_hdi_band",
+      id: "obesity_hdi",
       field: "hdi",
       bands: [
         {
@@ -112,9 +110,8 @@ const RULES = {
         },
       ],
     }),
-
     addBandRule({
-      id: "obesity_gdp_band",
+      id: "obesity_gdp",
       field: "gdpNominal",
       bands: [
         {
@@ -134,9 +131,8 @@ const RULES = {
         },
       ],
     }),
-
     addBandRule({
-      id: "obesity_gini_band",
+      id: "obesity_gini",
       field: "gini",
       bands: [
         {
@@ -160,7 +156,7 @@ const RULES = {
 
   depression: [
     addBandRule({
-      id: "depression_gini_band",
+      id: "depression_gini",
       field: "gini",
       bands: [
         {
@@ -180,9 +176,8 @@ const RULES = {
         },
       ],
     }),
-
     addBandRule({
-      id: "depression_hdi_band",
+      id: "depression_hdi",
       field: "hdi",
       bands: [
         {
@@ -202,9 +197,8 @@ const RULES = {
         },
       ],
     }),
-
     {
-      id: "depression_lifeexp_low_band",
+      id: "depression_lifeexp_low",
       when: (s) =>
         s.lifeExpectancy != null && !Number.isNaN(Number(s.lifeExpectancy)),
       points: (s) => {

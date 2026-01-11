@@ -1,7 +1,7 @@
 const { RULES, scoreToLevel } = require("./rules");
 
-function asNumber(maybeNumber) {
-  const n = Number(maybeNumber);
+function asNumber(x) {
+  const n = Number(x);
   return Number.isFinite(n) ? n : 0;
 }
 
@@ -40,6 +40,13 @@ function computeRisk(diseaseKey, snapshot) {
     score,
     level: scoreToLevel(score),
     why,
+    usedSignals: {
+      populationDensity: snapshot.populationDensity,
+      gdpNominal: snapshot.gdpNominal,
+      hdi: snapshot.hdi,
+      gini: snapshot.gini,
+      lifeExpectancy: snapshot.lifeExpectancy,
+    },
   };
 }
 
