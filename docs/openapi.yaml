@@ -1,0 +1,379 @@
+openapi: 3.0.3
+info:
+  title: MEAD API (Geo + Conditions + Risk Assessment)
+  version: 1.0.0
+  description: >
+    OpenAPI spec for the MEAD backend, split across three services:
+    geo-service (country snapshot), condition-service (disease metadata),
+    and risk-assessment-service (country and disease risk score with explanations).
+
+servers:
+  - url: http://localhost:4001
+    description: condition-service (disease data)
+  - url: http://localhost:4002
+    description: geo-service (country data)
+  - url: http://localhost:4003
+    description: risk-assessment-service (risk scoring + caching)
+
+tags:
+  - name: Geo
+    description: Country snapshot data (cached from Wikidata via Fuseki).
+  - name: Conditions
+    description: Static disease definitions, causes, and risk factors.
+  - name: Risk
+    description: Risk assessment for a disease in a given country (cached in Fuseki).
+  - name: Health
+    description: Health check endpoints.
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check (per-service)
+      description: >
+        Each service exposes GET /health on its own port.
+      responses:
+        "200":
+          description: Service is running.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              examples:
+                geo:
+                  value: { ok: true, service: "geo-service" }
+                conditions:
+                  value: { ok: true, service: "condition-service" }
+                risk:
+                  value: { ok: true, service: "risk-assessment-service" }
+
+  /geo/{iso2}:
+    get:
+      tags: [Geo]
+      summary: Get country snapshot by ISO2
+      description: >
+        Returns cached country indicators (from Fuseki), refreshing from Wikidata if missing or stale.
+        This endpoint does not include disease risk.
+      parameters:
+        - name: iso2
+          in: path
+          required: true
+          description: Two-letter ISO 3166-1 alpha-2 code (e.g., US, DE, FR).
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 2
+            example: US
+      responses:
+        "200":
+          description: Country snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeoCountryResponse"
+        "400":
+          description: Invalid ISO2.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Country not found (no Wikidata match).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /conditions:
+    get:
+      tags: [Conditions]
+      summary: List supported conditions
+      description: Returns the list of supported diseases (asthma, obesity, depression).
+      responses:
+        "200":
+          description: Array of condition definitions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Condition"
+        "500":
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /conditions/{key}:
+    get:
+      tags: [Conditions]
+      summary: Get a condition definition
+      description: Returns one condition definition by key.
+      parameters:
+        - name: key
+          in: path
+          required: true
+          description: Condition key (asthma | obesity | depression).
+          schema:
+            $ref: "#/components/schemas/ConditionKey"
+      responses:
+        "200":
+          description: Condition definition.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Condition"
+        "404":
+          description: Condition not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /risk/{iso2}/{disease}:
+    get:
+      tags: [Risk]
+      summary: Get risk assessment for a country and disease
+      description: >
+        Computes or returns a cached risk assessment (stored in Fuseki) for the given ISO2 and disease.
+        The assessment includes a score, level (low/medium/high), and explanation bullets.
+      parameters:
+        - name: iso2
+          in: path
+          required: true
+          description: Two-letter ISO 3166-1 alpha-2 code.
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 2
+            example: US
+        - name: disease
+          in: path
+          required: true
+          description: Disease key.
+          schema:
+            $ref: "#/components/schemas/ConditionKey"
+      responses:
+        "200":
+          description: Risk assessment result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskAssessmentResponse"
+        "400":
+          description: Invalid ISO2 or disease key.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Country or disease not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        ok:
+          type: boolean
+          example: true
+        service:
+          type: string
+          example: geo-service
+      required: [ok, service]
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        error:
+          type: string
+          example: "ISO2 must be 2 letters (e.g. US)"
+      required: [error]
+
+    ConditionKey:
+      type: string
+      enum: [asthma, obesity, depression]
+      example: asthma
+
+    Condition:
+      type: object
+      additionalProperties: false
+      properties:
+        key:
+          $ref: "#/components/schemas/ConditionKey"
+        name:
+          type: string
+          example: Asthma
+        short:
+          type: string
+          example: A chronic condition causing airway inflammation and breathing difficulty.
+        causes:
+          type: array
+          items:
+            type: string
+          example:
+            - Genetic predisposition
+            - Airway inflammation
+            - Environmental triggers
+        riskFactors:
+          type: array
+          items:
+            type: string
+          example:
+            - Urban air pollution exposure
+            - High population density / traffic exposure
+            - Industrial emissions (proxy)
+      required: [key, name, short, causes, riskFactors]
+
+    GeoCountry:
+      type: object
+      additionalProperties: false
+      properties:
+        label:
+          type: string
+          nullable: true
+          example: United States
+        population:
+          type: number
+          nullable: true
+          example: 334000000
+        areaKm2:
+          type: number
+          nullable: true
+          example: 9834000
+        populationDensity:
+          type: number
+          nullable: true
+          example: 34.0
+        gdpNominal:
+          type: number
+          nullable: true
+          example: 27000000000000
+        hdi:
+          type: number
+          nullable: true
+          example: 0.92
+        gini:
+          type: number
+          nullable: true
+          example: 0.41
+        lifeExpectancy:
+          type: number
+          nullable: true
+          example: 77.3
+      required:
+        - label
+        - population
+        - areaKm2
+        - populationDensity
+        - gdpNominal
+        - hdi
+        - gini
+        - lifeExpectancy
+
+    GeoCountryResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        iso2:
+          type: string
+          example: US
+        source:
+          type: string
+          description: Where the snapshot came from.
+          enum: [cache, refresh, wikidata]
+          example: cache
+        cachedAt:
+          type: string
+          format: date-time
+          example: "2026-01-12T09:30:00.000Z"
+        country:
+          $ref: "#/components/schemas/GeoCountry"
+      required: [iso2, source, cachedAt, country]
+
+    RiskLevel:
+      type: string
+      enum: [low, medium, high]
+      example: medium
+
+    RiskAssessmentResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        iso2:
+          type: string
+          example: US
+        disease:
+          $ref: "#/components/schemas/ConditionKey"
+        source:
+          type: string
+          description: Whether returned from cache or recomputed.
+          enum: [cache, refresh, computed]
+          example: cache
+        cachedAt:
+          type: string
+          format: date-time
+          example: "2026-01-12T09:31:00.000Z"
+        countryCachedAt:
+          type: string
+          format: date-time
+          description: The country snapshot timestamp used to compute this assessment.
+          example: "2026-01-12T09:30:00.000Z"
+        level:
+          $ref: "#/components/schemas/RiskLevel"
+        score:
+          type: number
+          example: 6
+        why:
+          type: array
+          description: Human-readable explanations for the triggered rules.
+          items:
+            type: string
+          example:
+            - "High population density can proxy higher traffic/urban pollution exposure. (+2)"
+            - "Very high GDP can proxy stronger industrialization/transport intensity. (+2)"
+        usedSignals:
+          type: object
+          description: Snapshot values actually used by the scoring rules.
+          additionalProperties: true
+          example:
+            populationDensity: 34
+            gdpNominal: 27000000000000
+            hdi: 0.92
+            gini: 0.41
+            lifeExpectancy: 77.3
+      required:
+        - iso2
+        - disease
+        - source
+        - cachedAt
+        - countryCachedAt
+        - level
+        - score
+        - why
+        - usedSignals
