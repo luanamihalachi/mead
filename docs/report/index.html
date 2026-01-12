@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>MEAD - Scholarly Technical Report (WADe)</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+
+  <body>
+    <header>
+      <h1>MEAD (Medical Web Advisor) - Scholarly Technical Report</h1>
+      <p>
+        Tags: <strong>project</strong>, <strong>infoiasi</strong>,
+        <strong>wade</strong>, <strong>web</strong>
+      </p>
+      <p>
+        Repository: https://github.com/luanamihalachi/mead<br />
+        Wiki: https://github.com/luanamihalachi/mead/wiki
+      </p>
+    </header>
+
+    <main>
+      <section id="abstract">
+        <h2>Abstract</h2>
+        <p>
+          MEAD (Medical Web Advisor) is an educational web application developed
+          for the WADe course that helps users (high-school students) explore
+          countries, common conditions, and contextual factors that influence
+          disease prevalence. The system follows a service-oriented architecture
+          composed of independent backend services and a web-based frontend.
+          Country information is retrieved from external linked data sources
+          (Wikidata) and cached to reduce repeated queries. Disease information
+          is enriched using external data sources (Wikidata), while a dedicated
+          risk assessment service computes an explainable score and “why”
+          justification for a selected country-disease pair. Risk assessments
+          and additional semantic data are stored and queried using Apache Jena
+          Fuseki and SPARQL.
+        </p>
+      </section>
+
+      <section id="introduction">
+        <h2>1. Introduction</h2>
+
+        <p>
+          MEAD (Medical Web Advisor) is an educational web application developed
+          during the WADe course. The goal of the project is to help users
+          (especially high-school students) explore how country specific factors
+          can be connected to common medical conditions and how such context can
+          influence disease risk.
+        </p>
+
+        <p>
+          The project is designed as a web system with a clear separation
+          between user-facing functionality and backend processing. Users
+          interact with MEAD through a browser-based interface that allows
+          selecting a country and a disease, then viewing a computed risk
+          assessment together with an explanation of the factors that
+          contributed to it.
+        </p>
+
+        <p>
+          From a software engineering perspective, MEAD uses a service-oriented
+          architecture. Distinct services handle country data retrieval, disease
+          information management, and risk assessment. This separation supports
+          scalability and makes the system easier to understand and extend.
+        </p>
+
+        <p>
+          MEAD also shows integration of external and semantic web resources.
+          Country information is obtained from external knowledge sources such
+          as Wikidata and cached to reduce repeated queries. In addition, the
+          system uses a semantic storage layer (Apache Jena Fuseki) to store
+          structured RDF data.
+        </p>
+
+        <p>
+          The rest of this report presents the system architecture, internal
+          data structures, API design, the use of RDF/SPARQL and the
+          conclusions.
+        </p>
+      </section>
+
+      <section id="architecture">
+        <h2>2. System Architecture</h2>
+
+        <p>
+          MEAD is designed as a service-oriented web application. The
+          architecture follows common software engineering principles such as
+          modularity, loose coupling, and clear responsibility boundaries, while
+          remaining simple enough to support an educational use case.
+        </p>
+
+        <h3>2.1 Architectural Overview</h3>
+        <p>
+          At a high level, the system is composed of three main layers: a
+          web-based frontend, a set of backend services exposing REST APIs, and
+          a semantic storage layer implemented using Apache Jena Fuseki.
+        </p>
+
+        <p>
+          End users interact exclusively with the frontend. All data retrieval,
+          processing, and persistence are handled by backend services, which
+          communicate using HTTP and JSON. Semantic data is stored and queried
+          using RDF and SPARQL.
+        </p>
+
+        <h3>2.1.1 C4 Model - Level 1 (System Context)</h3>
+        <p>Figure 1 presents the C4 Level 1 (System Context) view of MEAD.</p>
+
+        <figure>
+          <img
+            src="assets/diagrams/c4-level1.png"
+            alt="C4 Level 1 System Context diagram for MEAD"
+          />
+          <figcaption>
+            Figure 1. C4 Level 1 (System Context): user interaction with MEAD
+            and external dependency on Wikidata.
+          </figcaption>
+        </figure>
+
+        <h3>2.2 Main Components and Responsibilities</h3>
+
+        <ul>
+          <li>
+            <strong>Frontend</strong><br />
+            The frontend is a browser-based application responsible for user
+            interaction and data visualization. It allows users to explore
+            countries and diseases and to request a risk assessment for a
+            selected country-disease pair. The frontend does not contain domain
+            logic and relies entirely on backend REST APIs.
+          </li>
+
+          <li>
+            <strong>Geographical Service</strong><br />
+            The Geographical Service retrieves country-related data from
+            external linked data sources, primarily Wikidata. Retrieved
+            information is cached in the semantic storage layer as RDF snapshots
+            to reduce repeated external queries and to provide a consistent data
+            source for other services.
+          </li>
+
+          <li>
+            <strong>Condition Service</strong><br />
+            The Condition Service manages information about diseases and medical
+            conditions. The condition's data is resolved against Wikidata when
+            possible and stored as structured RDF resources, including
+            identifiers, descriptions, and related medical facts (e.g.,
+            symptoms, risk factors, treatments).
+          </li>
+
+          <li>
+            <strong>Risk Assessment Service</strong><br />
+            The Risk Assessment Service is the core application logic. It
+            combines country context and disease information, applies a
+            rule-based scoring mechanism, and generates an assessment describing
+            why a certain risk level was produced. Computed assessments are
+            persisted in the semantic storage layer.
+          </li>
+
+          <li>
+            <strong>Semantic Storage Layer (Apache Jena Fuseki)</strong><br />
+            Fuseki is used as an RDF-based persistence layer. It stores cached
+            country snapshots, disease-related semantic data, and computed risk
+            assessment results together with provenance metadata. The storage
+            layer supports SPARQL queries and enables reuse, transparency, and
+            extensibility.
+          </li>
+        </ul>
+
+        <h3>2.2.1 C4 Model - Level 2 (Container Diagram)</h3>
+        <p>
+          Figure 2 presents the C4 Level 2 (Container) view of MEAD. It
+          highlights the web frontend, the three backend services (geo-service,
+          condition-service, risk-assessment-service), the semantic storage
+          layer (Apache Jena Fuseki), and the interaction with Wikidata for
+          external knowledge retrieval.
+        </p>
+
+        <figure>
+          <img
+            src="assets/diagrams/c4-level2.png"
+            alt="C4 Level 2 Container diagram for MEAD"
+          />
+          <figcaption>
+            Figure 2. C4 Level 2 (Container): frontend, backend services, Fuseki
+            storage, and Wikidata integration.
+          </figcaption>
+        </figure>
+
+        <h3>2.3 Data and Task Flow</h3>
+
+        <p>
+          The workflow of the application is described below. It is intended to
+          be simple and information-oriented.
+        </p>
+        <ol>
+          <li>
+            The user selects a country or a disease in the frontend interface.
+          </li>
+          <li>
+            The frontend sends a REST request to the appropriate service (either
+            Condition Service or Geographical Service).
+          </li>
+          <li>The service provides the required information.</li>
+          <li>
+            The user can then choose to make a risk assessment between a country
+            and a condition.
+          </li>
+          <li>
+            A new request is sent to the backend, this time to the Risk
+            Assessment Service.
+          </li>
+          <li>
+            The service computes a numeric score and a categorical risk level
+            and generates an explanation.
+          </li>
+          <li>
+            The assessment result is returned to the frontend and presented to
+            the user.
+          </li>
+        </ol>
+
+        <h3>2.4 Input and Output Data Formats</h3>
+
+        <p>
+          Communication between components is based on RESTful APIs using JSON
+          for input and output data. The semantic storage layer represents data
+          using RDF and supports SPARQL queries for retrieval and freshness
+          checks. The detailed REST API is formally described using an OpenAPI
+          specification included in the project repository.
+        </p>
+      </section>
+      <section id="models">
+        <h2>3. Internal Data Structures and Models</h2>
+
+        <p>
+          MEAD manages data using two complementary representations: JSON-based
+          data transfer objects used by backend services and the frontend, and
+          RDF-based representations persisted in the semantic storage layer.
+          This dual representation allows the system to remain simple at the
+          application level while benefiting from structured semantic storage.
+        </p>
+
+        <h3>3.1 Application-Level Data Models (JSON)</h3>
+
+        <p>
+          Backend services exchange data using JSON structures over REST. These
+          structures are designed as lightweight and explicit models that
+          closely reflect the needs of the frontend interface.
+        </p>
+
+        <h4>Country Model</h4>
+        <p>
+          Country data represents a snapshot of contextual information retrieved
+          from external sources (e.g., Wikidata). The model includes
+          demographic, geographic, and socio-economic attributes.
+        </p>
+
+        <pre><code>{
+  "iso2": "RO",
+  "source": "wikidata",
+  "cachedAt": "2026-01-12T20:21:59.085Z",
+  "country": {
+    "label": "Romania",
+    "capital": "Bucharest",
+    "continent": "Europe",
+    "population": 19053815,
+    "areaKm2": 238397,
+    "populationDensity": 79.9247264017584,
+    "gdpNominal": 285404683025,
+    "hdi": 0.821,
+    "gini": 34.8,
+    "lifeExpectancy": 75,
+    "internetTld": ".ro",
+    "callingCode": "+40",
+    "currency": {
+      "id": "http://www.wikidata.org/entity/Q131645",
+      "label": "Romanian Leu"
+    },
+    "officialLanguages": [
+      "Romanian"
+    ],
+    "timezones": [
+      "UTC+02:00"
+    ],
+    "flagImage": "http://commons.wikimedia.org/wiki/Special:FilePath/Flag%20of%20Romania.svg",
+    "coatOfArmsImage": "http://commons.wikimedia.org/wiki/Special:FilePath/Coat%20of%20arms%20of%20Romania.svg",
+    "capitalCoordinates": {
+      "lat": 44.413361111,
+      "lon": 26.097777777
+    },
+    "majorCities": [
+      {
+        "id": "http://www.wikidata.org/entity/Q185280",
+        "name": "Baia Mare",
+        "population": null,
+        "lat": 47.656666666,
+        "lon": 23.571944444
+      },
+      {
+        "id": "http://www.wikidata.org/entity/Q79808",
+        "name": "Constanța",
+        "population": null,
+        "lat": 44.1767161,
+        "lon": 28.6507598
+      },
+      {
+        "id": "http://www.wikidata.org/entity/Q100188",
+        "name": "Cluj-Napoca",
+        "population": null,
+        "lat": 46.76891,
+        "lon": 23.59066
+      },
+      {
+        "id": "http://www.wikidata.org/entity/Q374465",
+        "name": "Mediaș",
+        "population": null,
+        "lat": 46.163888888,
+        "lon": 24.350833333
+      },
+      {
+        "id": "http://www.wikidata.org/entity/Q390162",
+        "name": "Huși",
+        "population": null,
+        "lat": 46.673055555,
+        "lon": 28.064722222
+      }
+    ]
+  }
+}</code></pre>
+
+        <h4>Disease / Condition Model</h4>
+        <p>
+          Disease data includes both basic descriptive information and
+          references to external medical knowledge. Diseases are resolved to
+          Wikidata entities whenever possible and may include identifiers and
+          related medical facts.
+        </p>
+
+        <pre><code>{
+  "key": "asthma",
+  "name": "Asthma",
+  "short": "A chronic condition causing airway inflammation and breathing difficulty.",
+  "causes": [
+    "Genetic predisposition",
+    "Airway inflammation",
+    "Environmental triggers"
+  ],
+  "riskFactors": [
+    "Urban air pollution exposure",
+    "High population density / traffic exposure",
+    "Industrial emissions (proxy)"
+  ],
+  "wikidata": {
+    "qid": "Q35869",
+    "wikidataUrl": "https://www.wikidata.org/wiki/Q35869",
+    "label": "asthma",
+    "description": "long-term disease involving inflamed airways",
+    "image": "http://commons.wikimedia.org/wiki/Special:FilePath/Asthma.jpg",
+    "identifiers": {
+      "icd10": null,
+      "icd11": [
+        "CA23"
+      ],
+      "mesh": [
+        "D001249"
+      ],
+      "umls": [
+        "C3714497",
+        "C0004096"
+      ]
+    },
+    "specialties": [
+      "immunology",
+      "pulmonology"
+    ],
+    "altLabels": [
+      "Asthma",
+      "asthma brionchiole",
+      "bronchial hyperreactivity",
+      "chronic obstructive asthma",
+      "chronic obstructive asthma with acute exacerbation",
+      "chronic obstructive asthma with status asthmaticus",
+      "Exercise induced asthma",
+      "exercise-induced asthma"
+    ],
+    "facts": {
+      "instanceOf": [
+        {
+          "id": "Q112193867",
+          "uri": "http://www.wikidata.org/entity/Q112193867",
+          "label": "class of disease"
+        }
+      ],
+      "subclassOf": [
+        {
+          "id": "Q279330",
+          "uri": "http://www.wikidata.org/entity/Q279330",
+          "label": "bronchospasm"
+        },
+        {
+          "id": "Q12136",
+          "uri": "http://www.wikidata.org/entity/Q12136",
+          "label": "disease"
+        }
+      ],
+      "symptoms": [
+        {
+          "id": "Q101991",
+          "uri": "http://www.wikidata.org/entity/Q101991",
+          "label": "inflammation"
+        },
+        {
+          "id": "Q517104",
+          "uri": "http://www.wikidata.org/entity/Q517104",
+          "label": "wheeze"
+        },
+        {
+          "id": "Q693058",
+          "uri": "http://www.wikidata.org/entity/Q693058",
+          "label": "chest pain"
+        },
+        {
+          "id": "Q35805",
+          "uri": "http://www.wikidata.org/entity/Q35805",
+          "label": "cough"
+        }
+      ],
+      "riskFactors": [
+        {
+          "id": "Q131123",
+          "uri": "http://www.wikidata.org/entity/Q131123",
+          "label": "air pollution"
+        },
+        {
+          "id": "Q662860",
+          "uri": "http://www.wikidata.org/entity/Q662860",
+          "label": "smoking"
+        }
+      ],
+      "treatments": [
+        ...
+      ],
+      "medications": [],
+      "causes": []
+    },
+    "resolvedBy": "Asthma",
+    "key": "asthma",
+    "cachedAt": "2026-01-12T20:21:30.012Z",
+    "short": "A chronic condition causing airway inflammation and breathing difficulty."
+  },
+  "source": "refresh"
+}</code></pre>
+
+        <h4>Risk Assessment Model</h4>
+        <p>
+          Risk assessments represent computed knowledge produced by the system.
+          Each assessment links a country and a disease and provides both a
+          numeric score and an explainable justification.
+        </p>
+
+        <pre><code>{
+  "iso2": "RO",
+  "disease": "asthma",
+  "source": "refresh",
+  "cachedAt": "2026-01-12T20:23:48.420Z",
+  "countryCachedAt": "2026-01-12T20:23:46.979Z",
+  "level": "low",
+  "score": 3,
+  "why": [
+    "Moderate population density can indicate more urban exposure. (+1)",
+    "Higher GDP can proxy more industrial activity and emissions potential. (+1)",
+    "Higher life expectancy can correlate with stronger health systems and diagnosis rates. (+1)"
+  ],
+  "usedSignals": {
+    "populationDensity": 79.9247264017584,
+    "gdpNominal": 285404683025,
+    "hdi": 0.821,
+    "gini": 34.8,
+    "lifeExpectancy": 75
+  }
+}</code></pre>
+
+        <h3>3.2 Semantic Data Representation (RDF)</h3>
+
+        <p>
+          Internally, selected data is persisted in Apache Jena Fuseki using
+          RDF. RDF is used to represent cached external knowledge,
+          disease-related facts, and computed risk assessment results.
+        </p>
+
+        <p>
+          Country snapshots, disease snapshots, and risk assessments are modeled
+          as distinct RDF resources. Where applicable, the data is partially
+          aligned with established vocabularies such as <code>schema.org</code>,
+          and enriched with provenance metadata using <code>prov</code> and
+          <code>dcterms</code>.
+        </p>
+
+        <pre><code>@prefix c: &lt;http://example.org/cache#&gt; .
+@prefix schema: &lt;https://schema.org/&gt; .
+@prefix prov: &lt;http://www.w3.org/ns/prov#&gt; .
+
+c:country/RO a c:CountrySnapshot, schema:Country ;
+  c:iso2 "RO" ;
+  schema:name "Romania" ;
+  schema:population "19000000" ;
+  prov:generatedAtTime "2026-01-10T12:00:00Z" .
+</code></pre>
+
+        <h3>3.3 Mapping Between JSON and RDF</h3>
+
+        <p>
+          JSON models are used for runtime communication between services and
+          the frontend, while RDF representations are used for persistence and
+          querying. When data is retrieved from Fuseki, RDF resources are mapped
+          back into JSON structures before being returned to the frontend.
+        </p>
+
+        <p>
+          This approach avoids exposing RDF complexity to the client while still
+          enabling semantic interoperability, caching of external data,
+          provenance tracking, and reuse of computed assessment results.
+        </p>
+      </section>
+
+      <section id="api">
+        <h2>4. API Design and OpenAPI Specification</h2>
+
+        <p>
+          MEAD exposes a REST API split across three backend services: a
+          geo-service for country snapshots, a condition-service for disease
+          data, and a risk-assessment-service for computing and caching
+          explainable risk scores. Services communicate using HTTP and exchange
+          data in JSON format. The full contract is documented in an OpenAPI
+          specification included in the project repository.
+        </p>
+
+        <h3>4.1 Service Separation and Endpoint Overview</h3>
+
+        <p>
+          The API is designed around clear responsibilities and stable
+          resources. Country context is treated independently from disease
+          definitions, and risk assessment is computed by a dedicated service
+          that combines the two.
+        </p>
+
+        <ul>
+          <li>
+            <strong>condition-service (port 4001)</strong> - provides supported
+            disease information used by the application.
+            <ul>
+              <li><code>GET /health</code></li>
+              <li><code>GET /conditions</code></li>
+              <li><code>GET /conditions/{key}</code></li>
+            </ul>
+          </li>
+          <li>
+            <strong>geo-service (port 4002)</strong> - provides country
+            indicators and handles cache refresh from external sources
+            (Wikidata) through the semantic storage layer.
+            <ul>
+              <li><code>GET /health</code></li>
+              <li><code>GET /geo/{iso2}</code></li>
+            </ul>
+          </li>
+          <li>
+            <strong>risk-assessment-service (port 4003)</strong> - computes an
+            explainable risk assessment for a country and a disease, using
+            cached country snapshots and persisting results in Fuseki.
+            <ul>
+              <li><code>GET /health</code></li>
+              <li><code>GET /risk/{iso2}/{disease}</code></li>
+            </ul>
+          </li>
+        </ul>
+
+        <h3>4.2 OpenAPI Specification</h3>
+
+        <p>
+          The OpenAPI specification documents all endpoints across the three
+          services, including request parameters, response schemas, and error
+          conditions. It also defines the expected identifiers used by the
+          system, such as ISO2 country codes and condition keys (e.g.,
+          <code>asthma</code>, <code>obesity</code>, <code>depression</code>).
+        </p>
+
+        <p>
+          Since each service runs on a different base URL, the specification
+          declares multiple servers:
+          <code>http://localhost:4001</code> (condition-service),
+          <code>http://localhost:4002</code> (geo-service), and
+          <code>http://localhost:4003</code> (risk-assessment-service). Each
+          service exposes <code>GET /health</code> for runtime checks.
+        </p>
+
+        <h3>4.3 Usage Examples</h3>
+
+        <p>
+          This section presents representative usage examples illustrating how
+          the REST API is consumed by the frontend and how the different
+          services interact to support the main user workflows.
+        </p>
+
+        <p>
+          The following example retrieves a cached country snapshot from the
+          geo-service. If the snapshot is missing or considered stale, the
+          service may refresh the data from Wikidata and update the semantic
+          cache accordingly.
+        </p>
+
+        <pre><code>GET http://localhost:4002/geo/US</code></pre>
+
+        <p>
+          The response includes the country identifier, the data source
+          (cache/refresh/wikidata), the cache timestamp, and a set of country
+          indicators that are later used by the risk assessment service.
+        </p>
+
+        <pre><code>{
+  "iso2": "US",
+  "source": "cache",
+  "cachedAt": "2026-01-12T21:28:40.483Z",
+  "country": {
+    "label": "United States",
+    "capital": "Washington, D.C.",
+    "continent": "North America",
+    "population": 340110988,
+    "areaKm2": 9826675,
+    "populationDensity": 34.6109938509211,
+    "gdpNominal": 23315080560000,
+    "hdi": 0.921,
+    "gini": 47.7,
+    "lifeExpectancy": 77,
+    "internetTld": ".us",
+    "callingCode": "+1",
+    "currency": {
+      "id": "http://www.wikidata.org/entity/Q4917",
+      "label": "United States dollar"
+    },
+    "officialLanguages": [
+      "English"
+    ],
+    "timezones": [
+      "UTC+12:00",
+      "Atlantic Time Zone",
+      "Central Time Zone",
+      "UTC-12:00",
+      "UTC-11:00",
+      "UTC-09:00",
+      "UTC-08:00",
+      "UTC-07:00",
+      "America/New_York",
+      "Mountain Time Zone",
+      "Alaska Time Zone",
+      "Chamorro Time Zone",
+      "UTC+10:00",
+      "Samoa Time Zone",
+      "Eastern Time Zone",
+      "UTC-06:00",
+      "UTC-05:00",
+      "UTC-04:00"
+    ],
+    "flagImage": "http://commons.wikimedia.org/wiki/Special:FilePath/Flag%20of%20the%20United%20States%20%28DDD-F-416E%20specifications%29.svg",
+    "coatOfArmsImage": "http://commons.wikimedia.org/wiki/Special:FilePath/Greater%20coat%20of%20arms%20of%20the%20United%20States.svg",
+    "capitalCoordinates": {
+      "lat": 38.895,
+      "lon": -77.036666666
+    },
+    "majorCities": ...
+  }
+}</code></pre>
+
+        <p>
+          The next example retrieves the list of supported diseases (conditions)
+          from the condition-service. This endpoint is typically used to
+          populate the disease selection interface in the frontend.
+        </p>
+
+        <pre><code>GET http://localhost:4001/conditions</code></pre>
+
+        <p>
+          The response contains an array of condition definitions, including a
+          short description, causes, and the risk factors considered by the
+          scoring logic.
+        </p>
+
+        <pre><code>
+[
+  {
+    "key": "asthma",
+    "name": "Asthma",
+    "short": "A chronic condition causing airway inflammation and breathing difficulty.",
+    "causes": [
+      "Genetic predisposition",
+      "Airway inflammation",
+      "Environmental triggers"
+    ],
+...
+  },
+  {
+    "key": "obesity",
+    "name": "Obesity",
+    "short": "Excess body fat that can increase risk of other health problems.",
+    "causes": [
+      "Calorie surplus over time",
+      "Diet quality",
+      "Low physical activity"
+    ],
+...
+  },
+  {
+    "key": "depression",
+    "name": "Depression",
+    "short": "A mood disorder causing persistent sadness and loss of interest.",
+    "causes": [
+      "Biological factors (brain chemistry)",
+      "Psychological factors",
+      "Social/environment stressors"]
+  ...
+  }
+]</code></pre>
+
+        <p>
+          When a specific condition is selected, the frontend can retrieve the
+          full information page using the condition key(name).
+        </p>
+
+        <pre><code>GET http://localhost:4001/conditions/asthma</code></pre>
+
+        <p>
+          Finally, the following example requests a risk assessment for a given
+          country-disease pair. The risk-assessment-service either returns a
+          cached assessment from the semantic store or recomputes it using the
+          latest country snapshot.
+        </p>
+
+        <pre><code>GET http://localhost:4003/risk/US/asthma</code></pre>
+
+        <p>
+          The response includes a numeric score, a categorical risk level, and a
+          list of human-readable explanation strings describing which rules were
+          triggered. Additional metadata indicates whether the result was served
+          from cache and which country snapshot was used.
+        </p>
+
+        <pre><code>{
+  "iso2": "US",
+  "disease": "asthma",
+  "source": "cache",
+  "cachedAt": "2026-01-12T21:30:23.702Z",
+  "countryCachedAt": "2026-01-12T21:28:40.483Z",
+  "level": "medium",
+  "score": 4,
+  "why": [
+    "Higher life expectancy can correlate with stronger health systems and diagnosis rates. (+1)",
+    "Extremely high GDP can proxy very high activity and emissions exposure. (+3)"
+  ],
+  "usedSignals": {
+    "populationDensity": 34.6109938509211,
+    "gdpNominal": 23315080560000,
+    "hdi": 0.921,
+    "gini": 47.7,
+    "lifeExpectancy": 77
+  }
+}</code></pre>
+
+        <h3>4.4 Pragmatic Case Studies</h3>
+
+        <h4>Case Study A: Exploring Country Context</h4>
+        <p>
+          A user selects a country in the frontend. The frontend requests
+          <code>GET /geo/{iso2}</code> from the geo-service to obtain a current
+          snapshot of indicators (population, density, GDP, etc.) or a fresh
+          version of the data.
+        </p>
+
+        <h4>Case Study B: Explainable Risk for a Country-Disease Pair</h4>
+        <p>
+          A user selects a disease (e.g., asthma) and requests an assessment for
+          a country (e.g., US). The frontend requests
+          <code>GET /risk/{iso2}/{disease}</code>. The risk-assessment-service
+          computes the score using the country snapshot and returns both the
+          resulting level and an explanation list (<code>why</code>).
+        </p>
+
+        <h4>Case Study C: Browsing Supported Diseases</h4>
+        <p>
+          To show disease information in the user interface, the frontend calls
+          <code>GET /conditions/{key}</code> on the condition-service to obtain
+          a short description and lists of causes and risk factors.
+        </p>
+      </section>
+
+      <section id="rdf">
+        <h2>5. RDF-Based Semantic Storage and Knowledge Representation</h2>
+
+        <p>
+          MEAD uses an RDF-based semantic storage layer implemented with Apache
+          Jena Fuseki. The purpose of this layer is to provide structured
+          persistence, semantic interoperability, and explainability for both
+          external knowledge and computed results.
+        </p>
+
+        <h3>5.1 Disease and Condition Knowledge</h3>
+        <p>
+          Diseases and medical conditions are represented as semantic snapshots
+          resolved to Wikidata entities whenever possible. For each condition,
+          the system stores identifiers (ICD-10, ICD-11, MeSH, UMLS), textual
+          descriptions, alternative labels, and a set of related medical facts
+          such as symptoms, risk factors, treatments, medications, and causes.
+        </p>
+        <p>
+          Related entities are stored as linked RDF resources that preserve
+          their original Wikidata URI, optional QID and a human-readable label.
+          This approach maintains semantic links to external knowledge bases
+          while remaining lightweight and application-driven.
+        </p>
+
+        <h3>5.2 Country Snapshots and External Knowledge Caching</h3>
+        <p>
+          Country-related information is retrieved from Wikidata and stored in
+          Fuseki as cached RDF snapshots. Each country is represented as a
+          resource identified by its ISO code. The stored data includes
+          demographic, geographic, and socio-economic attributes, together with
+          a timestamp indicating when the snapshot was generated.
+        </p>
+        <p>
+          In addition to a project-specific vocabulary, selected properties are
+          aligned with
+          <a href="https://schema.org/">schema.org</a> (e.g.,
+          <code>schema:Country</code>, <code>schema:population</code>) and
+          enriched with provenance metadata using
+          <code>prov:generatedAtTime</code> and <code>dcterms:source</code>.
+        </p>
+
+        <h3>5.3 Risk Assessment Results as Semantic Data</h3>
+        <p>
+          Computed risk assessments are also stored in the semantic layer. Each
+          assessment is represented as an RDF resource linked to both the
+          corresponding country and disease. The stored data includes a numeric
+          score, a categorical risk level, and a list of explanatory statements
+          describing why the score was produced.
+        </p>
+
+        <h3>5.4 Querying with SPARQL</h3>
+        <p>
+          All stored RDF data can be accessed using SPARQL queries. Queries are
+          used both for retrieving cached knowledge and for checking the
+          freshness of stored assessments before recomputation, ensuring
+          efficient reuse of previously computed results.
+        </p>
+      </section>
+
+      <section id="external-data">
+        <h2>6. External Data Sources and Linked Data Principles</h2>
+
+        <p>
+          MEAD integrates external data and semantic web technologies in a
+          pragmatic manner, focusing on reuse of existing knowledge bases rather
+          than the construction of a custom medical ontology. The primary
+          external data source used by the system is Wikidata, which provides
+          structured and interlinked information about countries and diseases.
+        </p>
+
+        <h3>6.1 Use of External Knowledge Sources</h3>
+        <p>
+          Disease and condition information is also resolved against Wikidata
+          entities whenever possible.
+        </p>
+
+        <p>
+          Country-related data is retrieved from Wikidata using SPARQL queries
+          and stored as cached snapshots in the semantic storage layer. This
+          data includes demographic, geographic, and socio-economic indicators
+          such as population density, GDP, and life expectancy. Caching these
+          snapshots in Fuseki reduces repeated external requests and ensures
+          consistent use of country context across the system.
+        </p>
+
+        <h3>6.2 SPARQL Usage</h3>
+
+        <p>
+          SPARQL is used both for querying external knowledge sources and for
+          retrieving data stored in the local semantic storage layer. Queries
+          are used to check for the existence and freshness of cached data, to
+          retrieve disease-related information, and to reuse previously computed
+          risk assessments.
+        </p>
+
+        <p>
+          The following example illustrates a SPARQL query used to retrieve a
+          cached country snapshot from the local Fuseki store:
+        </p>
+
+        <pre><code>
+SELECT
+  ?label ?cachedAt
+  ?capital ?continent
+  ?population ?areaKm2 ?populationDensity ?gdpNominal ?hdi ?gini ?lifeExpectancy
+  ?internetTld ?callingCode
+  ?currencyId ?currencyLabel
+  ?flagImage ?coatOfArmsImage
+  ?officialLanguagesJson ?timezonesJson ?capitalCoordinatesJson ?majorCitiesJson
+WHERE {
+  ${countryUri(iso2)} a c:CountrySnapshot ;
+    c:iso2 "${iso2}" ;
+    c:cachedAt ?cachedAt .
+
+  OPTIONAL { ${countryUri(iso2)} c:label ?label . }
+  OPTIONAL { ${countryUri(iso2)} c:capital ?capital . }
+  OPTIONAL { ${countryUri(iso2)} c:continent ?continent . }
+
+  OPTIONAL { ${countryUri(iso2)} c:population ?population . }
+  OPTIONAL { ${countryUri(iso2)} c:areaKm2 ?areaKm2 . }
+  OPTIONAL { ${countryUri(iso2)} c:populationDensity ?populationDensity . }
+  OPTIONAL { ${countryUri(iso2)} c:gdpNominal ?gdpNominal . }
+  OPTIONAL { ${countryUri(iso2)} c:hdi ?hdi . }
+  OPTIONAL { ${countryUri(iso2)} c:gini ?gini . }
+  OPTIONAL { ${countryUri(iso2)} c:lifeExpectancy ?lifeExpectancy . }
+
+  OPTIONAL { ${countryUri(iso2)} c:internetTld ?internetTld . }
+  OPTIONAL { ${countryUri(iso2)} c:callingCode ?callingCode . }
+
+  OPTIONAL { ${countryUri(iso2)} c:currencyId ?currencyId . }
+  OPTIONAL { ${countryUri(iso2)} c:currencyLabel ?currencyLabel . }
+
+  OPTIONAL { ${countryUri(iso2)} c:flagImage ?flagImage . }
+  OPTIONAL { ${countryUri(iso2)} c:coatOfArmsImage ?coatOfArmsImage . }
+
+  OPTIONAL { ${countryUri(
+    iso2
+  )} c:officialLanguagesJson ?officialLanguagesJson . }
+  OPTIONAL { ${countryUri(iso2)} c:timezonesJson ?timezonesJson . }
+  OPTIONAL { ${countryUri(
+    iso2
+  )} c:capitalCoordinatesJson ?capitalCoordinatesJson . }
+  OPTIONAL { ${countryUri(iso2)} c:majorCitiesJson ?majorCitiesJson . }
+}
+LIMIT 1</code></pre>
+
+        <h3>6.3 Conformance to Linked Data Principles</h3>
+
+        <p>
+          The system follows core linked data principles by reusing stable URIs
+          provided by Wikidata, representing knowledge using RDF, and enabling
+          access to stored data via SPARQL endpoints.
+        </p>
+
+        <p>
+          While MEAD does not perform ontology-based inference, its use of RDF,
+          external identifiers, and SPARQL querying demonstrates a practical
+          application of linked data concepts within a service-oriented web
+          application.
+        </p>
+      </section>
+
+      <section id="conclusion">
+        <h2>Conclusion</h2>
+
+        <p>
+          This report presents the design and implementation of MEAD (Medical
+          Web Advisor), an educational web application developed as part of the
+          WADe course. The project demonstrates how a service-oriented
+          architecture can be combined with external linked data sources and
+          semantic technologies to build a modular web system.
+        </p>
+
+        <p>
+          From a software engineering perspective, MEAD separates
+          responsibilities across independent services responsible for country
+          data retrieval, disease information management, and risk assessment.
+          This design improves maintainability and allows individual components
+          to evolve independently while exposing a REST API to the frontend.
+        </p>
+
+        <p>
+          The integration of Apache Jena Fuseki as an RDF-based storage layer
+          enables structured persistence of external knowledge and computed
+          assessment results. By representing selected data as RDF and querying
+          it using SPARQL, the system supports transparency, reuse of computed
+          results, and alignment with linked data principles without adding
+          unnecessary complexity to the client-side application.
+        </p>
+
+        <p>
+          MEAD is intentionally designed as an educational and exploratory tool
+          rather than a clinical decision system. Simplified models and
+          rule-based assessments are used to prioritize explainability and
+          accessibility for non-expert users, particularly students. Future work
+          may extend the system with additional data sources, richer semantic
+          models, and more advanced analysis techniques.
+        </p>
+
+        <p>
+          Overall, the project illustrates a pragmatic application of web
+          technologies, RESTful APIs, and semantic data management within a
+          modern web application.
+        </p>
+      </section>
+
+      <section id="references">
+        <h2>References</h2>
+
+        <ul>
+          <li>
+            OpenAPI Initiative. <em>OpenAPI Specification (OAS) 3.0.3</em>.
+            <a href="https://spec.openapis.org/oas/v3.0.3"
+              >https://spec.openapis.org/oas/v3.0.3</a
+            >
+          </li>
+          <li>
+            Apache Software Foundation. <em>Apache Jena</em> (Fuseki, SPARQL,
+            RDF).
+            <a href="https://jena.apache.org/">https://jena.apache.org/</a>
+          </li>
+          <li>
+            Apache Jena Documentation. <em>Fuseki</em>.
+            <a href="https://jena.apache.org/documentation/fuseki2/"
+              >https://jena.apache.org/documentation/fuseki2/</a
+            >
+          </li>
+          <li>
+            W3C. <em>SPARQL 1.1 Query Language</em>.
+            <a href="https://www.w3.org/TR/sparql11-query/"
+              >https://www.w3.org/TR/sparql11-query/</a
+            >
+          </li>
+          <li>
+            Wikidata. <em>Wikidata Knowledge Base</em>.
+            <a href="https://www.wikidata.org/">https://www.wikidata.org/</a>
+          </li>
+          <li>
+            Wikidata. <em>SPARQL Query Service (WDQS)</em>.
+            <a href="https://query.wikidata.org/"
+              >https://query.wikidata.org/</a
+            >
+          </li>
+          <li>
+            Schema.org Community. <em>Schema.org Vocabulary</em>.
+            <a href="https://schema.org/">https://schema.org/</a>
+          </li>
+          <li>
+            DCMI. <em>Dublin Core Metadata Terms (DCTERMS)</em>.
+            <a
+              href="https://www.dublincore.org/specifications/dublin-core/dcmi-terms/"
+              >https://www.dublincore.org/specifications/dublin-core/dcmi-terms/</a
+            >
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <footer>
+      <p>MEAD - WADe Project</p>
+    </footer>
+  </body>
+</html>

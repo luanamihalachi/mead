@@ -1,0 +1,51 @@
+:root {
+  --max: 980px;
+}
+
+body {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  line-height: 1.6;
+  margin: 0;
+}
+
+header,
+main,
+footer {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 24px;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+}
+
+h2 {
+  margin-top: 36px;
+  padding-top: 12px;
+  border-top: 1px solid #ddd;
+}
+
+pre {
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+code,
+pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
+}
+
+figure {
+  margin: 16px 0;
+}
+figcaption {
+  font-size: 0.95rem;
+  color: #444;
+}
