@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>MEAD - User Guide (Scholarly HTML)</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+
+  <body>
+    <header>
+      <h1>MEAD (Medical Web Advisor) - User Guide</h1>
+      <p>
+        Tags: <strong>project</strong>, <strong>infoiasi</strong>,
+        <strong>wade</strong>, <strong>web</strong>
+      </p>
+      <p>
+        This document explains how to use MEAD from an end-user perspective and
+        includes screen captures.
+      </p>
+    </header>
+
+    <main>
+      <section id="overview">
+        <h2>1. Overview</h2>
+        <p>
+          MEAD is an educational web application that helps users explore
+          countries and common diseases/conditions and obtain an explainable
+          risk assessment for a selected country-disease pair. The application
+          is designed for non-expert users, especially high-school students, and
+          focuses on clarity and transparency.
+        </p>
+      </section>
+
+      <section id="requirements">
+        <h2>2. Requirements and Access</h2>
+        <ul>
+          <li>A modern web browser (Chrome, Firefox, Edge).</li>
+          <li>Access to the MEAD frontend URL (local or deployed).</li>
+        </ul>
+
+        <p>
+          If running locally, ensure the backend services (geo-service,
+          condition-service, risk-assessment-service) and Fuseki are started,
+          then open the frontend in the browser.
+        </p>
+      </section>
+
+      <section id="ui">
+        <h2>3. User Interface Guide</h2>
+
+        <h3>3.1 Main Pages</h3>
+        <ul>
+          <li>
+            <strong>Conditions view</strong> - selecting a disease/condition
+            (asthma, obesity, depression).
+          </li>
+          <li>
+            <strong>Countries view</strong> - browsing or searching for a
+            country.
+          </li>
+          <li>
+            <strong>Assessment view</strong> - showing the computed risk score,
+            level, and explanation.
+          </li>
+        </ul>
+
+        <h3>3.2 Typical Interaction Flow</h3>
+        <ol>
+          <li>Select a country (by name or ISO2 code where applicable).</li>
+          <li>Select a disease/condition.</li>
+          <li>
+            Request an assessment (the app computes or loads a cached result).
+          </li>
+          <li>Read the result: score, risk level, and explanation bullets.</li>
+        </ol>
+
+        <figure>
+          <img
+            src="assets/screenshots/01-home.png"
+            alt="MEAD home / main navigation screenshot"
+          />
+          <figcaption>
+            Figure 1. Main navigation of the MEAD frontend (example screenshot).
+          </figcaption>
+        </figure>
+      </section>
+
+      <section id="case-studies">
+        <h2>4. Case Studies</h2>
+        <p>
+          This section demonstrates at least three practical scenarios using
+          MEAD. Each case study contains the inputs, the steps a user performs,
+          and the outputs displayed by the system.
+        </p>
+
+        <h3 id="cs1">Case Study 1: Country Snapshot Exploration (US)</h3>
+        <p><strong>Goal:</strong> View information about a selected country.</p>
+        <p><strong>Inputs:</strong> Country = United States (ISO2: US)</p>
+        <ol>
+          <li>Open the Countries view.</li>
+          <li>Select <strong>United States</strong>.</li>
+          <li>
+            Inspect the displayed indicators (population density, GDP, HDI,
+            etc.).
+          </li>
+        </ol>
+        <p>
+          <strong>Expected Output:</strong> A country snapshot with core
+          indicators.
+        </p>
+        <figure>
+          <img
+            src="assets/screenshots/02-country-us1.png"
+            alt="Country snapshot for US"
+          />
+          <figcaption>Figure 2. Example country snapshot for US</figcaption>
+        </figure>
+        <figure>
+          <img
+            src="assets/screenshots/02-country-us2.png"
+            alt="Country snapshot for US"
+          />
+          <figcaption>Figure 3. Example country snapshot for US</figcaption>
+        </figure>
+
+        <h3 id="cs2">
+          Case Study 2: Explainable Risk Assessment (US + Asthma)
+        </h3>
+        <p>
+          <strong>Goal:</strong> Compute an explainable assessment for a
+          country-disease pair.
+        </p>
+        <p><strong>Inputs:</strong> Country = US, Disease = asthma</p>
+        <ol>
+          <li>Select <strong>United States (US)</strong>.</li>
+          <li>Select the condition <strong>Asthma</strong>.</li>
+          <li>Trigger the risk assessment.</li>
+          <li>
+            Read the result: <em>level</em>, <em>score</em>, and the explanation
+            bullet list.
+          </li>
+        </ol>
+        <p>
+          <strong>Expected Output:</strong> Risk level (low/medium/high),
+          numeric score, and explanation bullets describing triggered rules.
+        </p>
+        <figure>
+          <img
+            src="assets/screenshots/03-risk-us-asthma.png"
+            alt="Risk assessment for US and asthma"
+          />
+          <figcaption>
+            Figure 4. Example risk assessment output for US + asthma, including
+            explanation (“why”).
+          </figcaption>
+        </figure>
+
+        <h3 id="cs3">Case Study 3: Exploring Disease Information (Asthma)</h3>
+
+        <p><strong>Goal:</strong> View detailed information about a disease.</p>
+
+        <p><strong>Inputs:</strong> Disease = Asthma</p>
+
+        <ol>
+          <li>Open the Conditions (Diseases) view in the frontend.</li>
+          <li>
+            Select the condition <strong>Asthma</strong> from the list of
+            supported diseases.
+          </li>
+          <li>
+            Read the displayed description, causes, and listed risk factors.
+          </li>
+        </ol>
+
+        <p>
+          <strong>Expected Output:</strong> A disease information view
+          containing a short description of the condition, a list of causes, and
+          relevant risk factors considered by the assessment logic.
+        </p>
+
+        <figure>
+          <img
+            src="assets/screenshots/04-disease-asthma1.png"
+            alt="Disease information view for asthma"
+          />
+          <figcaption>
+            Figure 4. Example disease information view for asthma.
+          </figcaption>
+        </figure>
+        <figure>
+          <img
+            src="assets/screenshots/04-disease-asthma2.png"
+            alt="Disease information view for asthma"
+          />
+          <figcaption>
+            Figure 5. Example disease information view for asthma.
+          </figcaption>
+        </figure>
+      </section>
+    </main>
+
+    <footer>
+      <p>MEAD - WADe Project - User Guide</p>
+    </footer>
+  </body>
+</html>
