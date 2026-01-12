@@ -4,13 +4,17 @@ const { getOrRefreshSnapshot } = require("../risk/storage");
 
 const router = express.Router();
 
-router.get("/health", (req, res) => res.json({ ok: true, service: "geo-service" }));
+router.get("/health", (req, res) =>
+  res.json({ ok: true, service: "geo-service" })
+);
 
 router.get("/geo/:iso2", async (req, res, next) => {
   try {
     const iso2 = normalizeIso2(req.params.iso2);
     if (!iso2 || iso2.length !== 2) {
-      return res.status(400).json({ error: "ISO2 must be 2 letters (e.g. US)" });
+      return res
+        .status(400)
+        .json({ error: "ISO2 must be 2 letters (e.g. US)" });
     }
 
     const { snapshot, source } = await getOrRefreshSnapshot(iso2);
@@ -47,7 +51,7 @@ router.get("/geo/:iso2", async (req, res, next) => {
         coatOfArmsImage: snapshot.coatOfArmsImage,
 
         capitalCoordinates: snapshot.capitalCoordinates,
-        majorCities: snapshot.majorCities || []
+        majorCities: snapshot.majorCities || [],
       },
     });
   } catch (e) {

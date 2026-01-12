@@ -21,7 +21,10 @@ function countryUri(iso2) {
 }
 
 function esc(str) {
-  return String(str).replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, " ");
+  return String(str)
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, " ");
 }
 
 function litStr(s) {
@@ -69,10 +72,6 @@ function extractLabelList(bindings, varName) {
   return Array.from(set);
 }
 
-/**
- * FACTS query (fast, single row).
- * Note: P78 is an entity, but label service yields ?internetTldLabel (".fr").
- */
 function buildWikidataCountryFactsQuery(iso2) {
   return `
 PREFIX wdt: <http://www.wikidata.org/prop/direct/>
@@ -119,9 +118,6 @@ LIMIT 1
 `;
 }
 
-/**
- * OFFICIAL languages only (strict): P37
- */
 function buildWikidataOfficialLanguagesQuery(iso2) {
   return `
 PREFIX wdt: <http://www.wikidata.org/prop/direct/>
@@ -137,9 +133,6 @@ LIMIT 50
 `;
 }
 
-/**
- * TIMEZONES: P421 on country OR P421 on capital (fallback)
- */
 function buildWikidataTimezonesQuery(iso2) {
   return `
 PREFIX wdt: <http://www.wikidata.org/prop/direct/>
@@ -160,14 +153,6 @@ LIMIT 50
 `;
 }
 
-/**
- * SIMPLE "some cities" query:
- * - takes any human settlement (Q486972) in the country via admin chain
- * - requires coordinates
- * - NO population requirement
- *
- * This is deliberately simple and tends to work for France and many other countries.
- */
 function buildWikidataMajorCitiesIdsQuery(iso2, limit = 5) {
   const safeLimit = Number(limit) || 5;
   return `
@@ -194,7 +179,9 @@ function parseCityIdRows(bindings) {
   for (const b of bindings || []) {
     const id = b?.city?.value ? String(b.city.value) : null;
     const qid = id ? qidFromEntityUrl(id) : null;
-    const coord = b?.coord?.value ? parseCoordWktToLatLon(String(b.coord.value)) : null;
+    const coord = b?.coord?.value
+      ? parseCoordWktToLatLon(String(b.coord.value))
+      : null;
     if (!id || !qid || !coord) continue;
     out.push({ id, qid, coord });
   }
@@ -202,7 +189,7 @@ function parseCityIdRows(bindings) {
 }
 
 function parseLabelsMap(bindings) {
-  const map = new Map(); // qid -> label
+  const map = new Map();
   for (const b of bindings || []) {
     const cityUrl = b?.city?.value ? String(b.city.value) : null;
     const qid = cityUrl ? qidFromEntityUrl(cityUrl) : null;
@@ -212,9 +199,7 @@ function parseLabelsMap(bindings) {
   return map;
 }
 
-
 function buildWikidataLabelsForEntitiesQuery(qids) {
-  // qids = ["Q90", "Q456", ...]
   const values = qids.map((q) => `wd:${q}`).join(" ");
   return `
 PREFIX wd:   <http://www.wikidata.org/entity/>
@@ -227,32 +212,23 @@ SELECT ?city ?label WHERE {
 `;
 }
 
-
-
-
-
-
-/**
- * Parse city rows:
- * - require name + coordinates
- * - population is not required (set to null)
- */
 function parseCityRows(bindings) {
-  return (bindings || []).map(b => ({
+  return (bindings || []).map((b) => ({
     id: b.city.value,
     name: b.cityLabel.value,
     population: null,
-    ...parseCoordWktToLatLon(b.coord.value)
+    ...parseCoordWktToLatLon(b.coord.value),
   }));
 }
 
-
-
 async function fetchFromWikidata(iso2) {
-  const wikidataUrl = process.env.WIKIDATA_SPARQL_URL || "https://query.wikidata.org/sparql";
+  const wikidataUrl =
+    process.env.WIKIDATA_SPARQL_URL || "https://query.wikidata.org/sparql";
 
-  // 1) facts
-  const factsRes = await sparqlSelect(wikidataUrl, buildWikidataCountryFactsQuery(iso2));
+  const factsRes = await sparqlSelect(
+    wikidataUrl,
+    buildWikidataCountryFactsQuery(iso2)
+  );
   const factsBindings = factsRes?.results?.bindings || [];
   if (factsBindings.length === 0) {
     const err = new Error(`No Wikidata country found for ISO2=${iso2}`);
@@ -267,7 +243,9 @@ async function fetchFromWikidata(iso2) {
   const population = getNum("population");
   const areaKm2 = getNum("area");
   const populationDensity =
-    population != null && areaKm2 != null && areaKm2 > 0 ? population / areaKm2 : null;
+    population != null && areaKm2 != null && areaKm2 > 0
+      ? population / areaKm2
+      : null;
 
   const facts = {
     label: getStr("countryLabel"),
@@ -294,50 +272,58 @@ async function fetchFromWikidata(iso2) {
     capitalCoordinates: parseCoordWktToLatLon(getStr("capitalCoord")),
   };
 
-  // 2) official languages
   let officialLanguages = [];
   try {
-    const res = await sparqlSelect(wikidataUrl, buildWikidataOfficialLanguagesQuery(iso2));
+    const res = await sparqlSelect(
+      wikidataUrl,
+      buildWikidataOfficialLanguagesQuery(iso2)
+    );
     officialLanguages = extractLabelList(res?.results?.bindings, "langLabel");
   } catch {
     officialLanguages = [];
   }
 
-  // 3) timezones
   let timezones = [];
   try {
-    const res = await sparqlSelect(wikidataUrl, buildWikidataTimezonesQuery(iso2));
+    const res = await sparqlSelect(
+      wikidataUrl,
+      buildWikidataTimezonesQuery(iso2)
+    );
     timezones = extractLabelList(res?.results?.bindings, "tzLabel");
   } catch {
     timezones = [];
   }
 
-let majorCities = [];
-try {
-  const limit = Number(process.env.MAJOR_CITIES_LIMIT || 5);
+  let majorCities = [];
+  try {
+    const limit = Number(process.env.MAJOR_CITIES_LIMIT || 5);
 
-  // Step 1: get 5 city QIDs + coords (fast)
-  const idsRes = await sparqlSelect(wikidataUrl, buildWikidataMajorCitiesIdsQuery(iso2, limit));
-  const cityRows = parseCityIdRows(idsRes?.results?.bindings);
+    const idsRes = await sparqlSelect(
+      wikidataUrl,
+      buildWikidataMajorCitiesIdsQuery(iso2, limit)
+    );
+    const cityRows = parseCityIdRows(idsRes?.results?.bindings);
 
-  // Step 2: resolve labels for those QIDs (tiny)
-  const qids = cityRows.map((r) => r.qid);
-  let labels = new Map();
-  if (qids.length > 0) {
-    const labelsRes = await sparqlSelect(wikidataUrl, buildWikidataLabelsForEntitiesQuery(qids));
-    labels = parseLabelsMap(labelsRes?.results?.bindings);
+    const qids = cityRows.map((r) => r.qid);
+    let labels = new Map();
+    if (qids.length > 0) {
+      const labelsRes = await sparqlSelect(
+        wikidataUrl,
+        buildWikidataLabelsForEntitiesQuery(qids)
+      );
+      labels = parseLabelsMap(labelsRes?.results?.bindings);
+    }
+
+    majorCities = cityRows.map((r) => ({
+      id: r.id,
+      name: labels.get(r.qid) || r.qid,
+      population: null,
+      ...r.coord,
+    }));
+  } catch {
+    console.error("Wikidata majorCities failed:", e?.message || e);
+    majorCities = [];
   }
-
-  majorCities = cityRows.map((r) => ({
-    id: r.id,
-    name: labels.get(r.qid) || r.qid, // fallback to QID if label missing
-    population: null,
-    ...r.coord,
-  }));
-} catch {
-  console.error("Wikidata majorCities failed:", e?.message || e);
-  majorCities = [];
-}
 
   return { ...facts, officialLanguages, timezones, majorCities };
 }
@@ -380,9 +366,13 @@ WHERE {
   OPTIONAL { ${countryUri(iso2)} c:flagImage ?flagImage . }
   OPTIONAL { ${countryUri(iso2)} c:coatOfArmsImage ?coatOfArmsImage . }
 
-  OPTIONAL { ${countryUri(iso2)} c:officialLanguagesJson ?officialLanguagesJson . }
+  OPTIONAL { ${countryUri(
+    iso2
+  )} c:officialLanguagesJson ?officialLanguagesJson . }
   OPTIONAL { ${countryUri(iso2)} c:timezonesJson ?timezonesJson . }
-  OPTIONAL { ${countryUri(iso2)} c:capitalCoordinatesJson ?capitalCoordinatesJson . }
+  OPTIONAL { ${countryUri(
+    iso2
+  )} c:capitalCoordinatesJson ?capitalCoordinatesJson . }
   OPTIONAL { ${countryUri(iso2)} c:majorCitiesJson ?majorCitiesJson . }
 }
 LIMIT 1
@@ -476,6 +466,76 @@ async function upsertSnapshot(iso2, snap) {
   add("timezonesJson", litJson(snap.timezones || []));
   add("capitalCoordinatesJson", litJson(snap.capitalCoordinates || null));
   add("majorCitiesJson", litJson(snap.majorCities || []));
+
+  triples.push(`${subj} a <https://schema.org/Country> .`);
+
+  if (snap.label) {
+    triples.push(`${subj} <https://schema.org/name> ${litStr(snap.label)} .`);
+  }
+  triples.push(`${subj} <https://schema.org/identifier> ${litStr(iso2)} .`);
+
+  if (snap.capital) {
+    triples.push(
+      `${subj} <https://schema.org/capital> ${litStr(snap.capital)} .`
+    );
+  }
+  if (snap.continent) {
+    triples.push(
+      `${subj} <https://schema.org/containedInPlace> ${litStr(
+        snap.continent
+      )} .`
+    );
+  }
+
+  if (snap.population != null) {
+    triples.push(
+      `${subj} <https://schema.org/population> ${litNum(snap.population)} .`
+    );
+  }
+  if (snap.areaKm2 != null) {
+    triples.push(`${subj} <https://schema.org/area> ${litNum(snap.areaKm2)} .`);
+  }
+
+  if (snap.flagImage) {
+    triples.push(
+      `${subj} <https://schema.org/image> ${litStr(snap.flagImage)} .`
+    );
+  }
+  if (snap.coatOfArmsImage) {
+    triples.push(
+      `${subj} <https://schema.org/image> ${litStr(snap.coatOfArmsImage)} .`
+    );
+  }
+
+  const lat = snap?.capitalCoordinates?.lat;
+  const lon = snap?.capitalCoordinates?.lon;
+  if (lat != null && lon != null) {
+    triples.push(
+      `${subj} <https://schema.org/geo> [
+        a <https://schema.org/GeoCoordinates> ;
+        <https://schema.org/latitude> ${litNum(lat)} ;
+        <https://schema.org/longitude> ${litNum(lon)}
+      ] .`
+    );
+  }
+
+  for (const l of Array.isArray(snap.officialLanguages)
+    ? snap.officialLanguages
+    : []) {
+    if (l) {
+      triples.push(`${subj} <https://schema.org/knowsLanguage> ${litStr(l)} .`);
+    }
+  }
+  for (const tz of Array.isArray(snap.timezones) ? snap.timezones : []) {
+    if (tz) {
+      triples.push(`${subj} <https://schema.org/timeZone> ${litStr(tz)} .`);
+    }
+  }
+
+  triples.push(
+    `${subj} <http://www.w3.org/ns/prov#generatedAtTime> ${litDateTime(now)} .`
+  );
+  triples.push(`${subj} <http://purl.org/dc/terms/source> "wikidata" .`);
 
   const updateQuery = `
 DELETE WHERE { ${subj} ?p ?o . };

@@ -96,7 +96,11 @@ async function upsertAssessment(iso2, disease, assessment) {
 
   const subj = assessmentUri(iso2, disease);
 
+  const countryUri = `<${NS}country/${iso2}>`;
+  const conditionUri = `<${NS}condition/${disease}>`;
+
   const triples = [];
+
   triples.push(`${subj} a <${NS}RiskAssessment> .`);
   triples.push(`${subj} <${NS}iso2> "${iso2}" .`);
   triples.push(`${subj} <${NS}disease> "${disease}" .`);
@@ -118,6 +122,39 @@ async function upsertAssessment(iso2, disease, assessment) {
     triples.push(`${subj} <${NS}why> ${litStr(w)} .`);
   }
 
+  triples.push(`${subj} a <https://schema.org/Report> .`);
+
+  triples.push(`${subj} <https://schema.org/about> ${countryUri} .`);
+  triples.push(`${subj} <https://schema.org/about> ${conditionUri} .`);
+
+  for (const w of assessment.why || []) {
+    triples.push(`${subj} <https://schema.org/comment> ${litStr(w)} .`);
+  }
+
+  triples.push(
+    `${subj} <http://www.w3.org/ns/prov#generatedAtTime> ${litDateTime(now)} .`
+  );
+  triples.push(`${subj} <http://purl.org/dc/terms/source> "computed" .`);
+  triples.push(
+    `${subj} <http://www.w3.org/ns/prov#wasDerivedFrom> ${countryUri} .`
+  );
+
+  triples.push(
+    `${subj} <https://schema.org/additionalProperty> [
+      a <https://schema.org/PropertyValue> ;
+      <https://schema.org/name> "risk score" ;
+      <https://schema.org/value> ${litNum(assessment.score)}
+    ] .`
+  );
+
+  triples.push(
+    `${subj} <https://schema.org/additionalProperty> [
+      a <https://schema.org/PropertyValue> ;
+      <https://schema.org/name> "risk level" ;
+      <https://schema.org/value> ${litStr(assessment.level)}
+    ] .`
+  );
+
   const updateQuery = `
 DELETE WHERE { ${subj} ?p ?o . };
 
@@ -125,6 +162,7 @@ INSERT DATA {
   ${triples.join("\n  ")}
 }
 `;
+
   await sparqlUpdate(update, updateQuery);
 
   return {
