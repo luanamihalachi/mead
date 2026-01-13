@@ -123,48 +123,242 @@
 
         <ul>
           <li>
-            <strong>Frontend</strong><br />
-            The frontend is a browser-based application responsible for user
-            interaction and data visualization. It allows users to explore
-            countries and diseases and to request a risk assessment for a
-            selected country-disease pair. The frontend does not contain domain
-            logic and relies entirely on backend REST APIs.
+            <h4>Frontend</h4>
+            <p>
+              The frontend is a browser-based application responsible for user
+              interaction and data visualization. It allows users to explore
+              countries and diseases and to request a risk assessment for a
+              selected country-disease pair. The frontend does not contain
+              domain logic and relies entirely on backend REST APIs.
+            </p>
+
+            <p>
+              The frontend is intentionally designed to be as simple as
+              possible. All data processing, knowledge integration, caching, and
+              decision logic are handled server-side. This design choice
+              improves maintainability, simplifies the client implementation,
+              and ensures that domain logic remains centralized and consistent
+              across the system.
+            </p>
+
+            <p>
+              The user interface is organized into three main views, supported
+              by a set of reusable components:
+            </p>
+
+            <ul>
+              <li>
+                <strong>Home Page</strong><br />
+                The home page provides the main entry point to the application.
+                It allows users to select a country (via ISO2 code or equivalent
+                selector) or a medical condition. This view focuses on guiding
+                the user toward exploring the available data rather than
+                presenting detailed information.
+              </li>
+              <figure>
+                <img
+                  src="assets/screenshots/01-home.png"
+                  alt="MEAD home / main navigation screenshot"
+                />
+                <figcaption>
+                  Figure 2. Main navigation of the MEAD frontend (example
+                  screenshot).
+                </figcaption>
+              </figure>
+
+              <li>
+                <strong>Country / Condition View</strong><br />
+                This view displays detailed contextual information about a
+                selected country or a selected medical condition. For countries,
+                it presents demographic and socio-economic indicators such as
+                population, population density, GDP, HDI, Gini coefficient, and
+                life expectancy. For conditions, it presents descriptive
+                information including causes and risk factors. Data shown in
+                this view is retrieved from the geo-service and the
+                condition-service, respectively.
+              </li>
+
+              <figure>
+                <img
+                  src="assets/screenshots/02-country-us1.png"
+                  alt="Country snapshot for US"
+                />
+                <figcaption>
+                  Figure 3. Example country snapshot for US
+                </figcaption>
+              </figure>
+              <figure>
+                <img
+                  src="assets/screenshots/02-country-us2.png"
+                  alt="Country snapshot for US"
+                />
+                <figcaption>
+                  Figure 4. Example country snapshot for US
+                </figcaption>
+              </figure>
+              <figure>
+                <img
+                  src="assets/screenshots/04-disease-asthma1.png"
+                  alt="Disease information view for asthma"
+                />
+                <figcaption>
+                  Figure 5. Example disease information view for asthma.
+                </figcaption>
+              </figure>
+              <figure>
+                <img
+                  src="assets/screenshots/04-disease-asthma2.png"
+                  alt="Disease information view for asthma"
+                />
+                <figcaption>
+                  Figure 6. Example disease information view for asthma.
+                </figcaption>
+              </figure>
+
+              <li>
+                <strong>Risk Assessment View</strong><br />
+                The risk assessment view is the core visualization of the
+                system. It combines a selected country and a selected disease to
+                display an explainable risk level (low, medium, or high). In
+                addition to the final classification, the view presents a
+                numeric score, the contributing factors used in the assessment,
+                and a list of human-readable explanations describing why a
+                particular risk level was produced.
+              </li>
+              <figure>
+                <img
+                  src="assets/screenshots/03-risk-us-asthma.png"
+                  alt="Risk assessment for US and asthma"
+                />
+                <figcaption>
+                  Figure 7. Example risk assessment output for US + asthma,
+                  including explanation (“why”).
+                </figcaption>
+              </figure>
+            </ul>
+
+            <p>
+              Reusable UI components such as country information cards, disease
+              description panels, risk badges, and explanation lists are used
+              across views to ensure consistency and reduce duplication.
+            </p>
           </li>
 
           <li>
-            <strong>Geographical Service</strong><br />
-            The Geographical Service retrieves country-related data from
-            external linked data sources, primarily Wikidata. Retrieved
-            information is cached in the semantic storage layer as RDF snapshots
-            to reduce repeated external queries and to provide a consistent data
-            source for other services.
+            <h4>Condition Service</h4>
+            <p>
+              The Condition Service manages information about diseases and
+              medical conditions supported by the system, those currently being
+              asthma, obesity and depression. The condition's data is resolved
+              against Wikidata when possible and stored as structured RDF
+              resources, including identifiers, descriptions, and related
+              medical facts (e.g., symptoms, risk factors, treatments).
+            </p>
+            <p>
+              Disease definitions are intentionally kept simple and are curated
+              manually to ensure clarity and consistency. Each condition is
+              described by a short textual description, a list of causes, and a
+              list of risk factors. While the primary source of this information
+              is internal, the service gets more info from the external data
+              source (Wikidata), such as symptoms, causes and treatment options.
+              This facilitates future integration with external biomedical
+              knowledge bases.
+            </p>
+            <p>
+              By persisting condition metadata in Fuseki, the system ensures
+              that disease concepts are treated as first-class semantic entities
+              rather than application-specific constants. This design choice
+              improves transparency and supports extensibility, for example by
+              allowing additional medical properties or links to external
+              vocabularies to be added later.
+            </p>
+          </li>
+          <li>
+            <h4>Geographical Service</h4>
+            <p>
+              The Geographical Service provides access to country-level
+              contextual data. Its primary responsibility is to retrieve and
+              cache geographic and socio-economic indicators for countries
+              identified by ISO2 codes. The service acts as the sole integration
+              point with external linked data sources, most notably Wikidata.
+            </p>
+            <p>
+              When a country is requested, the service first checks whether a
+              cached snapshot exists in the semantic storage layer. If the
+              snapshot is missing or older than a predefined freshness threshold
+              (30 days), the service queries the Wikidata SPARQL endpoint to
+              retrieve the relevant indicators. Retrieved data is then stored as
+              an RDF snapshot together with provenance metadata such as a
+              retrieval timestamp.
+            </p>
+
+            <p>
+              The Geographical Service exposes only country context data and
+              does not perform any disease-related computations. This strict
+              separation of concerns ensures that country data remains reusable
+              and independent of application-specific inference logic.
+            </p>
           </li>
 
           <li>
-            <strong>Condition Service</strong><br />
-            The Condition Service manages information about diseases and medical
-            conditions. The condition's data is resolved against Wikidata when
-            possible and stored as structured RDF resources, including
-            identifiers, descriptions, and related medical facts (e.g.,
-            symptoms, risk factors, treatments).
+            <h4>Risk Assessment Service</h4>
+            <p>
+              The Risk Assessment Service is the core application logic. It
+              combines country context and disease information, applies a
+              rule-based scoring mechanism, and generates an assessment
+              describing why a certain risk level was produced.
+            </p>
+
+            <p>
+              The service applies a rule-based scoring mechanism that uses
+              country-level indicators (e.g., population density, HDI, GDP,
+              inequality metrics) as proxies for environmental, socio-economic,
+              and healthcare-related factors. Each rule contributes a defined
+              number of points and a human-readable explanation when triggered.
+              The total score is mapped to a qualitative risk level (low,
+              medium, high).
+            </p>
+
+            <p>
+              Computed assessments are cached in the semantic storage layer as
+              RDF resources. Each assessment is linked to both the country and
+              the disease it concerns and includes metadata indicating which
+              version of the country snapshot was used. This allows the system
+              to automatically invalidate and recompute assessments when the
+              underlying country context changes.
+            </p>
+
+            <p>
+              By isolating all inference logic in this service, the architecture
+              enables scalable evolution of the risk model without affecting the
+              data retrieval or presentation layers.
+            </p>
           </li>
 
           <li>
-            <strong>Risk Assessment Service</strong><br />
-            The Risk Assessment Service is the core application logic. It
-            combines country context and disease information, applies a
-            rule-based scoring mechanism, and generates an assessment describing
-            why a certain risk level was produced. Computed assessments are
-            persisted in the semantic storage layer.
-          </li>
+            <h4>Semantic Storage Layer (Apache Jena Fuseki)</h4>
+            <p>
+              Apache Jena Fuseki is used as the RDF-based persistence layer. It
+              stores cached country snapshots, disease-related semantic data,
+              and computed risk assessment results together with provenance
+              metadata. The storage layer supports SPARQL queries and enables
+              reuse, transparency, and extensibility.
+            </p>
+            <p>
+              Fuseki enables SPARQL-based querying and updating of stored data
+              and acts as a shared knowledge base for all backend services. The
+              use of RDF allows heterogeneous data (external country indicators,
+              internal disease knowledge, and computed assessments) to coexist
+              within a unified semantic model.
+            </p>
 
-          <li>
-            <strong>Semantic Storage Layer (Apache Jena Fuseki)</strong><br />
-            Fuseki is used as an RDF-based persistence layer. It stores cached
-            country snapshots, disease-related semantic data, and computed risk
-            assessment results together with provenance metadata. The storage
-            layer supports SPARQL queries and enables reuse, transparency, and
-            extensibility.
+            <p>
+              In addition to caching, the semantic storage layer supports
+              provenance, transparency, and explainability by storing
+              timestamps, links between resources, and explanation statements.
+              This design ensures that all computed results can be traced back
+              to their underlying data sources and assumptions.
+            </p>
           </li>
         </ul>
 
@@ -183,7 +377,7 @@
             alt="C4 Level 2 Container diagram for MEAD"
           />
           <figcaption>
-            Figure 2. C4 Level 2 (Container): frontend, backend services, Fuseki
+            Figure 8. C4 Level 2 (Container): frontend, backend services, Fuseki
             storage, and Wikidata integration.
           </figcaption>
         </figure>
@@ -225,12 +419,50 @@
 
         <p>
           Communication between components is based on RESTful APIs using JSON
-          for input and output data. The semantic storage layer represents data
-          using RDF and supports SPARQL queries for retrieval and freshness
-          checks. The detailed REST API is formally described using an OpenAPI
-          specification included in the project repository.
+          for input and output data. All frontend-backend communication follows
+          a request-response pattern over HTTP, ensuring loose coupling between
+          components and clear interface boundaries.
+        </p>
+
+        <p>
+          JSON responses returned by the services expose normalized and
+          application-level data structures. For example, country snapshots are
+          returned as structured objects containing demographic and
+          socio-economic indicators, while risk assessment responses include
+          qualitative risk levels, numeric scores, and human-readable
+          explanations. This format is well suited for consumption by the
+          frontend and supports straightforward data visualization and error
+          handling.
+        </p>
+
+        <p>
+          Internally, the semantic storage layer represents data using the
+          Resource Description Framework (RDF). Apache Jena Fuseki stores
+          country snapshots, condition metadata, and risk assessment results as
+          RDF resources, each identified by stable URIs and enriched with
+          provenance information such as timestamps. RDF is used to manage
+          heterogeneous data originating from external sources, internal
+          knowledge definitions, and computed results within a unified model.
+        </p>
+
+        <p>
+          Interaction with the semantic storage layer is performed using SPARQL
+          queries and updates. SPARQL SELECT queries are used to retrieve cached
+          data and to evaluate freshness conditions, while SPARQL UPDATE
+          operations are used to persist refreshed snapshots and newly computed
+          risk assessments.
+        </p>
+
+        <p>
+          To formally document and standardize the REST interfaces exposed by
+          the backend services, the complete API is described using an OpenAPI
+          specification. This specification defines available endpoints, request
+          parameters, response schemas, and error formats, providing a
+          machine-readable contract for both frontend development and future
+          service integration.
         </p>
       </section>
+
       <section id="models">
         <h2>3. Internal Data Structures and Models</h2>
 
@@ -485,29 +717,65 @@
         <h3>3.2 Semantic Data Representation (RDF)</h3>
 
         <p>
-          Internally, selected data is persisted in Apache Jena Fuseki using
-          RDF. RDF is used to represent cached external knowledge,
-          disease-related facts, and computed risk assessment results.
+          The RDF schema used by the application is implicitly defined by the
+          data insertion logic implemented in the backend services. RDF triples
+          are generated programmatically using helper functions that distinguish
+          between single-valued and multi-valued properties. Single-valued
+          attributes (e.g., population, HDI, score) are represented by at most
+          one triple per resource, while multi-valued attributes (e.g., risk
+          factors or explanation statements) are represented by multiple triples
+          sharing the same predicate.
         </p>
 
         <p>
-          Country snapshots, disease snapshots, and risk assessments are modeled
-          as distinct RDF resources. Where applicable, the data is partially
-          aligned with established vocabularies such as <code>schema.org</code>,
-          and enriched with provenance metadata using <code>prov</code> and
-          <code>dcterms</code>.
+          The application models three main resource categories in RDF:
+          <strong>CountrySnapshot</strong>, <strong>Condition</strong>, and
+          <strong>RiskAssessment</strong>. Each resource is assigned a stable
+          URI derived from domain identifiers (ISO2 for countries and a small
+          controlled vocabulary for conditions). A minimal amount of alignment
+          with existing vocabularies is applied where it is natural and
+          beneficial (e.g., using <code>schema:name</code> for human-readable
+          labels). Provenance and freshness are captured using timestamps (e.g.,
+          <code>c:cachedAt</code>), which are used by the services to enforce
+          the 30-day caching policy.
         </p>
 
-        <pre><code>@prefix c: &lt;http://example.org/cache#&gt; .
-@prefix schema: &lt;https://schema.org/&gt; .
-@prefix prov: &lt;http://www.w3.org/ns/prov#&gt; .
+        <p>
+          The following example illustrates a cached country snapshot as stored
+          in Fuseki. The resource is identified by an application URI
+          (<code>c:country/RO</code>), typed as a country snapshot, and enriched
+          with basic descriptive attributes and a generation timestamp.
+        </p>
 
-c:country/RO a c:CountrySnapshot, schema:Country ;
-  c:iso2 "RO" ;
-  schema:name "Romania" ;
-  schema:population "19000000" ;
-  prov:generatedAtTime "2026-01-10T12:00:00Z" .
-</code></pre>
+        <figure>
+          <img
+            src="assets/screenshots/fuseki-country1.png"
+            alt="Screenshot of Apache Jena Fuseki"
+          />
+          <figcaption>
+            Figure 91. Screenshot of Apache Jena Fuseki showing RDF triples for
+            a cached condition snapshot.
+          </figcaption>
+        </figure>
+        <figure>
+          <img
+            src="assets/screenshots/fuseki-country2.png"
+            alt="Screenshot of Apache Jena Fuseki"
+          />
+          <figcaption>
+            Figure 10. Screenshot of Apache Jena Fuseki showing RDF triples for
+            a cached condition snapshot.
+          </figcaption>
+        </figure>
+
+        <p>
+          Similar RDF resources are used for conditions and risk assessments. In
+          particular, a risk assessment resource stores both the final
+          classification (score and low/medium/high level) and an explainability
+          trail via repeated
+          <code>c:why</code> statements. This ensures that computed results
+          remain transparent and queryable within the semantic storage layer.
+        </p>
 
         <h3>3.3 Mapping Between JSON and RDF</h3>
 

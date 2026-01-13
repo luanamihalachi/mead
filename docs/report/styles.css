@@ -45,6 +45,12 @@ pre {
 figure {
   margin: 16px 0;
 }
+img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
 figcaption {
   font-size: 0.95rem;
   color: #444;
